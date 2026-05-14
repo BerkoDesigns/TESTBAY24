@@ -689,7 +689,7 @@ function loadWeather() {
 function updateUI() {
     let now = new Date();
 
-// TESTING: Force Saturday (6) for Shabbat Mevarchim testing
+ // TESTING: Force Saturday (6) for Shabbat Mevarchim testing
     // Comment this out when not testing:
     now.getDay = () => 6;
   
@@ -937,12 +937,12 @@ function updateUI() {
             head = "שבת / " + hText;
             sub = "";
             cls = "teal-box";
-        } else if (hText.includes("ראש חודש") && !hText.includes("מברכים")) {
+        } else if (hText && hText.includes("ראש חודש") && !hText.includes("מברכים")) {
             // Shabbat Rosh Chodesh (not Mevarchim)
             head = "שבת ראש חודש";
             sub = "הלל, יעלה ויבא, אתה יצרת";
             cls = "teal-box";
-        } else if (hText.includes("מברכים")) {
+        } else if (hText && hText.includes("מברכים")) {
             // Shabbat Mevarchim (blessing of the month)
             head = "שבת מברכים";
             let rcDays = [];
