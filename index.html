@@ -688,6 +688,11 @@ function loadWeather() {
 // ── MAIN UI UPDATE ────────────────────────────────────────────────
 function updateUI() {
     let now = new Date();
+
+// TESTING: Force Saturday (6) for Shabbat Mevarchim testing
+    // Comment this out when not testing:
+    now.getDay = () => 6;
+  
     let h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
     let cSec = (h*3600) + (m*60) + s;
     let dayW = now.getDay();
@@ -718,7 +723,7 @@ function updateUI() {
     let dIso = (cSec < THREE_AM) ? getIso(new Date(now.getTime() - 86400000)) : getIso(now);
     let dDate = schedule[dIso] || dToday;
 
-    let rtSecs = getSec(dToday.z[10], true) + 120;
+    let rtSecs = getSec(dToday.z[10], true);
     let oIso   = (cSec >= rtSecs - 1500) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
     let dOmer  = schedule[oIso] || dToday;
 
@@ -798,8 +803,8 @@ function updateUI() {
     }
 
     // רבינו תם — no special styling, sorts naturally
-    let rtTime = shiftTime(dDate.z[10], 2);
-    zRows.push({ id:'r12', label:'רבינו תם', timeStr: rtTime, secVal: getSec(dDate.z[10], true) + 120 });
+    let rtTime = dDate.z[10];
+    zRows.push({ id:'r12', label:'רבינו תם', timeStr: rtTime, secVal: getSec(dDate.z[10], true) });
 
     // Sort all by time
     zRows.sort((a, b) => a.secVal - b.secVal);
@@ -926,22 +931,52 @@ function updateUI() {
     let isTishaBav = hText.includes("תשעה באב");
 
     if (isShab) {
-        if (hText !== "") {
-            head = hText; cls = "teal-box";
-            if (hText.includes("מברכים")) {
-                let rcDays = [];
-                for (let ahead = 1; ahead <= 8; ahead++) {
-                    let aheadIso = getIso(new Date(now.getTime() + ahead * 86400000));
-                    let aheadDay = schedule[aheadIso];
-                    if (aheadDay && (aheadDay.holidayText || "").includes("ראש חודש")) {
-                        let dayName = DAY_MAP[aheadDay.day] || aheadDay.day || "";
-                        if (dayName && !rcDays.includes(dayName)) rcDays.push(dayName);
-                    }
+        // SHABBAT PRIORITY
+        if (isYomTov && hText) {
+            // Shabbat that is also Yom Tov
+            head = "שבת / " + hText;
+            sub = "";
+            cls = "teal-box";
+        } else if (hText.includes("ראש חודש") && !hText.includes("מברכים")) {
+            // Shabbat Rosh Chodesh (not Mevarchim)
+            head = "שבת ראש חודש";
+            sub = "הלל, יעלה ויבא, אתה יצרת";
+            cls = "teal-box";
+        } else if (hText.includes("מברכים")) {
+            // Shabbat Mevarchim (blessing of the month)
+            head = "שבת מברכים";
+            let rcDays = [];
+            let rcText = "";
+            for (let ahead = 1; ahead <= 8; ahead++) {
+                let aheadIso = getIso(new Date(now.getTime() + ahead * 86400000));
+                let aheadDay = schedule[aheadIso];
+                if (aheadDay && (aheadDay.holidayText || "").includes("ראש חודש")) {
+                    let dayName = DAY_MAP[aheadDay.day] || aheadDay.day || "";
+                    if (dayName && !rcDays.includes(dayName)) rcDays.push(dayName);
+                    if (!rcText) rcText = aheadDay.holidayText; // Get the holiday text
                 }
-                sub = rcDays.join(" ו");
-            } else { sub = ""; }
+            }
+            // Format: "ראש חודש סיון יום ראשון" or "ראש חודש סיון יום ראשון ויום שני"
+            if (rcDays.length > 0) {
+                if (rcDays.length === 1) {
+                    sub = rcText + " " + rcDays[0];
+                } else if (rcDays.length === 2) {
+                    sub = rcText + " " + rcDays[0] + " ו" + rcDays[1];
+                } else {
+                    sub = rcText + " " + rcDays.slice(0, -1).join(", ") + " ו" + rcDays[rcDays.length - 1];
+                }
+            }
+            cls = "teal-box";
+        } else if (hText !== "") {
+            // Other holiday on Shabbat
+            head = hText;
+            sub = "";
+            cls = "teal-box";
         } else {
-            head = "שבת קודש"; cls = "gold-box"; sub = "";
+            // Regular Shabbat
+            head = "שבת קודש";
+            sub = "";
+            cls = "gold-box";
         }
     } else if (isMotz) {
         // Motzei Shabbos — Col D text shows with ותודיענו, otherwise אתה חוננתנו
@@ -964,8 +999,18 @@ function updateUI() {
             head = hText || "יום טוב"; sub = tR; cls = "teal-box";
         }
     } else if (hText !== "" && !isPastRT) {
-        // Col D text — only before RT
-        head = hText; sub = tR; cls = "teal-box";
+        // Col D text — only before RT (includes Rosh Chodesh)
+        if (hText.includes("ראש חודש")) {
+            // Weekday Rosh Chodesh
+            head = hText;
+            sub = "הלל, יעלה ויבא";
+            cls = "teal-box";
+        } else {
+            // Other holiday text
+            head = hText;
+            sub = tR;
+            cls = "teal-box";
+        }
     } else if (tR !== "" && !isPastRT) {
         // Tachanun override — only before RT
         head = "אין אומרים תחנון"; sub = tR; cls = "teal-box";
